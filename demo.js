@@ -40,3 +40,19 @@ function simulate() {
 
 let buffer = new ReplayBuffer();
 buffer.addEpisode(simulate(), 1);
+
+const q = tf.variable(tf.zeros([5, 2]));
+
+approx = ((s, a) => q.dataSync()[s, a]);
+
+let model = new Qmodel(approx);
+
+const opt = tf.train.sgd(0.1);
+
+model.setTrainingParameters(
+    {
+        type: "MC",
+        gamma: 1
+    },
+    opt
+);

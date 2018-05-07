@@ -11,12 +11,10 @@ class Episode {
 
 // Class for experience replay data
 class ReplayBuffer {
-    constructor(bufferSize = 1000,          // How many training examples to keep in active memory?
-        oneHotState = false)                // Represent states with a single input being 1?
+    constructor(bufferSize = 1000)          // How many training examples to keep in active memory?
     {
         this.buffer = [];
         this.bufferSize = bufferSize;
-        this.oneHotState = oneHotState;
     }
 
     add(trainingExample) {                  // Add a single training example to buffer
@@ -49,12 +47,8 @@ class ReplayBuffer {
 }
 
 class Qmodel {
-    constructor(inputShape,                 // Shape of representation of state
-        outputShape,                        // Shape of representation of action
-        approximationFunction)              // Action value function approximator
+    constructor(approximationFunction)      // Action value function approximator
     {    
-        this.inputShape = inputShape;
-        this.outputShape = outputShape;
         this.approximator = approximationFunction;
     }
 
@@ -69,20 +63,18 @@ class Qmodel {
         
         switch(this.algorithm) {
             case "MC":
-            // For MC learning, we need to keep track of events until the episode ends
-            this.episode = new Episode();
-
+            
             // Make targets
-            let target = (sample) => tf.scalar(sample["target"]);            
-            let targets = (batch) => tf.tensor1d(batch.map(target));
+            let target = (sample) => sample["target"];            
+            let targets = (batch) => tf.tensor1d(batch.buffer.map(target));
             
             // Find current q-values
-            let currentStateAction = (sample) => approximationFunction(sample["state"], sample["action"]);
-            let currentQ = (batch) => tf.tensor1d(batch.map(currentStateAction));
+            let currentStateAction = (sample) => this.approximator(sample["state"], sample["action"]);
+            let currentQ = (batch) => tf.tensor1d(batch.buffer.map(currentStateAction));
 
-            this.loss = (batch) => tf.tidy(tf.squaredDifference(targets(batch), currentQ(batch)).mean());
+            this.loss = (batch) => tf.squaredDifference(targets(batch), currentQ(batch)).mean();
             break;
-
+            
             case "TD":
                 this.lambda = algorithm["lambda"];
                 this.eligibilityTrace = tf.zeros(inputShape);
@@ -106,8 +98,6 @@ class Qmodel {
             this.fixedTargetCounter = 0;
             this.miniBatchSize = miniBatchSize;
             this.prematureTraining = prematureTraining;
-
-            
         }
     }
 
