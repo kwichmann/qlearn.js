@@ -22,11 +22,7 @@ function simulate() {
             action = null;
             episodeEnded = true;
         }
-        episode.add({
-            state: state,
-            action: action,
-            r: reward
-        });
+        episode.add([state], [action], reward);
 
         if (action == 0) {
             state -= 1;
@@ -38,21 +34,30 @@ function simulate() {
     return episode;
 }
 
-let buffer = new ReplayBuffer();
-buffer.addEpisode(simulate(), 1);
+let buffer = new ReplayBuffer(20, [1], [1]);
+let episode = simulate();
+buffer.addEpisode(episode, 1);
 
-const q = tf.variable(tf.zeros([5, 2]));
+// const q = tf.variable(tf.zeros([5, 2]));
 
-approx = ((s, a) => q.dataSync()[s, a]);
+// const inputState = tf.input({shape: [1]});
+// const inputAction = tf.input({shape: [1]});
 
-let model = new Qmodel(approx);
+// // const tf.layers.add(inputState);
+// const output = tf.layers.embedding(inputDim = 10, outputDim = 1, embeddingsInitializer = "zeros");
 
-const opt = tf.train.sgd(0.1);
+// //const output = q.dataSync(tf.dataSync.apply(inputState)[0], tf.dataSync.apply(inputAction)[0]);
 
-model.setTrainingParameters(
-    {
-        type: "MC",
-        gamma: 1
-    },
-    opt
-);
+// const approx = tf.model({inputs: [inputState, inputAction], outputs: output});
+
+// let model = new Qmodel(approx);
+ 
+// const opt = tf.train.sgd(0.1);
+
+// model.setTrainingParameters(
+//     {
+//         type: "MC",
+//         gamma: 1
+//     },
+//     opt
+// );

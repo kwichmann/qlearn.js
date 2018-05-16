@@ -1,53 +1,111 @@
 // Class for keeping track of an episode for MC learning
 class Episode {
     constructor() {
-        this.samples = [];
+        this.states = [];
+        this.actions = [];
+        this.rewards = [];
     }
 
-    add(sample) {
-        this.samples.push(sample);
+    add(state, action, reward) {
+        this.states.push(state);
+        this.actions.push(action);
+        this.rewards.push(reward);
     }
 }
 
+const flatten = (arr) => arr.reduce((flat, next) => flat.concat(Array.isArray(next) ? flatten(next) : next), []);
+
 // Class for experience replay data
 class ReplayBuffer {
-    constructor(bufferSize = 1000)          // How many training examples to keep in active memory?
+    constructor(bufferSize = 1000,          // How many training examples to keep in active memory?
+        stateShape,
+        actionShape)                    
     {
-        this.buffer = [];
+        this.stateShape = stateShape;
+        this.stateSize = stateShape.reduce((a, b) => a * b, 1);
+        
+        this.actionShape = actionShape;
+        this.actionSize = actionShape.reduce((a, b) => a * b, 1);
+        
+        this.stateBuffer = tf.buffer([bufferSize, this.stateSize]);
+        this.actionBuffer = tf.buffer([bufferSize, this.actionSize]);
+        this.targetBuffer = tf.buffer([bufferSize, 1]);
+        
         this.bufferSize = bufferSize;
+        this.currentSize = 0;
+        this.currentPosition = 0;
     }
 
-    add(trainingExample) {                  // Add a single training example to buffer
-        this.buffer.push(trainingExample);
-        if (this.buffer.length > this.bufferSize) {
-            this.buffer.shift();
+    add(state, action, target) {                  // Add a single training example to buffer
+        flatten(state).map(
+            (value, n) => {
+                this.stateBuffer.set(value, this.currentPosition, n);
+            }
+        );
+        
+        flatten(action).map(
+            (value, n) => {
+                this.actionBuffer.set(value, this.currentPosition, n);
+            }
+        );
+        
+        this.targetBuffer.set(target, this.currentPosition, 0);
+        
+        console.log(target);
+
+        this.currentPosition += 1;
+        if (this.currentPosition >= this.bufferSize) {
+            this.currentPosition = 0;
+        }
+
+        this.currentSize += 1;
+        if (this.currentSize >= this.bufferSize) {
+            this.currentSize = this.bufferSize;
         }
     }
 
     addEpisode(episode, gamma) {
-        const l = episode.samples.length;
-        let targetReward = episode.samples[l - 1]["r"];
+        const l = episode.states.length;
+        
+        let target = episode.rewards[l - 1];
         
         for (let i = l - 2; i >= 0; i--) {
-            const sample = episode.samples[i];
+            const state = episode.states[i];
+            const action = episode.actions[i];
+            const reward = episode.rewards[i];
             
-            const state = sample["state"];
-            const action = sample["action"];
-            const r = sample["r"];
-            
-            targetReward = r + targetReward * gamma;
-            
-            this.add({
-                state: state,
-                action: action,
-                target: targetReward
-            });
+            target = reward + target * gamma;
+
+            this.add(state, action, target);
         }
+    }
+
+    getStates() {
+        return tf.tidy(
+            () => this.stateBuffer.toTensor()
+                .slice([0, 0], [this.currentSize, this.stateSize])
+                .reshape([this.currentSize].concat(this.stateShape))
+        );
+    }
+
+    getActions() {
+        return tf.tidy(
+            () => this.actionBuffer.toTensor()
+                .slice([0, 0], [this.currentSize, this.actionSize])
+                .reshape([this.currentSize].concat(this.actionShape))
+        );
+    }
+
+    getTargets() {
+        return tf.tidy(
+            () => this.targetBuffer.toTensor()
+                .slice([0, 0], [this.currentSize, 1])
+        );
     }
 }
 
 class Qmodel {
-    constructor(approximationFunction)      // Action value function approximator
+    constructor(approximationFunction)      // Action value function approximator tf.model
     {    
         this.approximator = approximationFunction;
     }
@@ -73,8 +131,10 @@ class Qmodel {
             let currentQ = (batch) => tf.tensor1d(batch.buffer.map(currentStateAction));
 
             this.loss = (batch) => tf.squaredDifference(targets(batch), currentQ(batch)).mean();
+
+
             break;
-            
+
             case "TD":
                 this.lambda = algorithm["lambda"];
                 this.eligibilityTrace = tf.zeros(inputShape);
