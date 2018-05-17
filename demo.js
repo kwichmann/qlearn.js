@@ -34,30 +34,36 @@ function simulate() {
     return episode;
 }
 
-let buffer = new ReplayBuffer(20, [1], [1]);
-let episode = simulate();
-buffer.addEpisode(episode, 1);
+let buffer = new ReplayBuffer(100, [1], [1]);
 
-// const q = tf.variable(tf.zeros([5, 2]));
+for (let i = 0; i < 10; i++) {
+    let episode = simulate();
+    buffer.addEpisode(episode, 1);
+}
 
-// const inputState = tf.input({shape: [1]});
-// const inputAction = tf.input({shape: [1]});
+const q = tf.variable(tf.zeros([5, 2]));
 
-// // const tf.layers.add(inputState);
-// const output = tf.layers.embedding(inputDim = 10, outputDim = 1, embeddingsInitializer = "zeros");
+const inputState = tf.input({shape: [1]});
+const inputAction = tf.input({shape: [1]});
 
-// //const output = q.dataSync(tf.dataSync.apply(inputState)[0], tf.dataSync.apply(inputAction)[0]);
+const concatLayer = tf.layers.concatenate();
+const input = concatLayer.apply([inputState, inputAction]);
 
-// const approx = tf.model({inputs: [inputState, inputAction], outputs: output});
+const hidden = tf.layers.dense({units: 10, activation: "relu"}).apply(input);
+const output = tf.layers.dense({units: 1, activation: "linear"}).apply(hidden);
 
-// let model = new Qmodel(approx);
+const approx = tf.model({inputs: [inputState, inputAction], outputs: output});
+
+let model = new Qmodel(approx);
  
-// const opt = tf.train.sgd(0.1);
+const opt = tf.train.sgd(0.1);
 
-// model.setTrainingParameters(
-//     {
-//         type: "MC",
-//         gamma: 1
-//     },
-//     opt
-// );
+model.setTrainingParameters(
+    {
+        type: "MC",
+        gamma: 1
+    },
+    opt
+);
+
+model.train(buffer, 10);

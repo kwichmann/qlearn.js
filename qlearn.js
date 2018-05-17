@@ -51,8 +51,6 @@ class ReplayBuffer {
         
         this.targetBuffer.set(target, this.currentPosition, 0);
         
-        console.log(target);
-
         this.currentPosition += 1;
         if (this.currentPosition >= this.bufferSize) {
             this.currentPosition = 0;
@@ -81,26 +79,20 @@ class ReplayBuffer {
     }
 
     getStates() {
-        return tf.tidy(
-            () => this.stateBuffer.toTensor()
+        return this.stateBuffer.toTensor()
                 .slice([0, 0], [this.currentSize, this.stateSize])
                 .reshape([this.currentSize].concat(this.stateShape))
-        );
     }
 
     getActions() {
-        return tf.tidy(
-            () => this.actionBuffer.toTensor()
+        return this.actionBuffer.toTensor()
                 .slice([0, 0], [this.currentSize, this.actionSize])
                 .reshape([this.currentSize].concat(this.actionShape))
-        );
     }
 
     getTargets() {
-        return tf.tidy(
-            () => this.targetBuffer.toTensor()
+        return this.targetBuffer.toTensor()
                 .slice([0, 0], [this.currentSize, 1])
-        );
     }
 }
 
@@ -122,16 +114,10 @@ class Qmodel {
         switch(this.algorithm) {
             case "MC":
             
-            // Make targets
-            let target = (sample) => sample["target"];            
-            let targets = (batch) => tf.tensor1d(batch.buffer.map(target));
-            
-            // Find current q-values
-            let currentStateAction = (sample) => this.approximator(sample["state"], sample["action"]);
-            let currentQ = (batch) => tf.tensor1d(batch.buffer.map(currentStateAction));
-
-            this.loss = (batch) => tf.squaredDifference(targets(batch), currentQ(batch)).mean();
-
+            this.approximator.compile({
+                optimizer: optimizer,
+                loss: "meanSquaredError"
+            });
 
             break;
 
@@ -153,7 +139,6 @@ class Qmodel {
                 console.log("Unknown algorithm")
                 return;
             
-            this.optimizer = optimizer;
             this.fixedTargetDelay = fixedTargetDelay;
             this.fixedTargetCounter = 0;
             this.miniBatchSize = miniBatchSize;
@@ -161,17 +146,17 @@ class Qmodel {
         }
     }
 
-    train(replayBuffer)                     // Buffer to train from
+    train(replayBuffer, epochs = 1)                     // Buffer to train from
     {
-        let numberOfTrainingExamples = this.replayBuffer.length;
-        if (numberOfTrainingExamples == 0) {
-            return;
-        }
-        if (numberOfTrainingExamples < this.replayBuffer.bufferSize) {
-            if (prematureTraining) {
-                return;
-            }
-        }
-        this.optimizer.minimize()
+        tf.tidy(() => {
+            const states = replayBuffer.getStates();
+            const actions = replayBuffer.getActions();
+            const targets = replayBuffer.getTargets();
+
+            this.approximator.fit([states, actions], targets, {
+                batchSize: this.miniBatchSize,
+                epochs: epochs
+            });
+        });
     }
 }
