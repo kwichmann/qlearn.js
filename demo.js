@@ -34,9 +34,9 @@ function simulate() {
     return episode;
 }
 
-let buffer = new ReplayBuffer(100, [1], [1]);
+let buffer = new ReplayBuffer(1000, [1], [1]);
 
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 100; i++) {
     let episode = simulate();
     buffer.addEpisode(episode, 1);
 }
@@ -66,4 +66,11 @@ model.setTrainingParameters(
     opt
 );
 
-model.train(buffer, 100).then(() => {console.log("Training done");});
+model.train(buffer, 100).then(() => {
+    console.log("Training done");
+
+    model.approximator.predict([
+        tf.tensor2d([0, 1, 2, 3, 4, 0, 1, 2, 3, 4], [10, 1]),
+        tf.tensor2d([0, 0, 0, 0, 0, 1, 1, 1, 1, 1], [10, 1])])
+        .print();
+});
