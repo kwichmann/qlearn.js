@@ -79,20 +79,20 @@ class ReplayBuffer {
     }
 
     getStates() {
-        return this.stateBuffer.toTensor()
+        return tf.tidy(() => this.stateBuffer.toTensor()
                 .slice([0, 0], [this.currentSize, this.stateSize])
-                .reshape([this.currentSize].concat(this.stateShape))
+                .reshape([this.currentSize].concat(this.stateShape)));
     }
 
     getActions() {
-        return this.actionBuffer.toTensor()
+        return tf.tidy(() => this.actionBuffer.toTensor()
                 .slice([0, 0], [this.currentSize, this.actionSize])
-                .reshape([this.currentSize].concat(this.actionShape))
+                .reshape([this.currentSize].concat(this.actionShape)));
     }
 
     getTargets() {
-        return this.targetBuffer.toTensor()
-                .slice([0, 0], [this.currentSize, 1])
+        return tf.tidy(() => this.targetBuffer.toTensor()
+                .slice([0, 0], [this.currentSize, 1]));
     }
 }
 
@@ -146,17 +146,15 @@ class Qmodel {
         }
     }
 
-    train(replayBuffer, epochs = 1)                     // Buffer to train from
-    {
-        tf.tidy(() => {
-            const states = replayBuffer.getStates();
-            const actions = replayBuffer.getActions();
-            const targets = replayBuffer.getTargets();
+    async train(replayBuffer, epochs = 1)                     // Buffer to train from
+    {    
+        const states = replayBuffer.getStates();
+        const actions = replayBuffer.getActions();
+        const targets = replayBuffer.getTargets();
 
-            this.approximator.fit([states, actions], targets, {
-                batchSize: this.miniBatchSize,
-                epochs: epochs
-            });
-        });
+        this.approximator.fit([states, actions], targets, {
+            batchSize: this.miniBatchSize,
+            epochs: epochs
+        });      
     }
 }

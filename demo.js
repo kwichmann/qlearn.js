@@ -66,4 +66,4 @@ model.setTrainingParameters(
     opt
 );
 
-model.train(buffer, 10);
+model.train(buffer, 100).then(() => {console.log("Training done");});
