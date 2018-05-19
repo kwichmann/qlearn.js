@@ -152,9 +152,13 @@ class Qmodel {
         const actions = replayBuffer.getActions();
         const targets = replayBuffer.getTargets();
 
-        this.approximator.fit([states, actions], targets, {
+        await this.approximator.fit([states, actions], targets, {
             batchSize: this.miniBatchSize,
             epochs: epochs
-        });      
+        });
+        
+        tf.dispose(states);
+        tf.dispose(actions);
+        tf.dispose(targets);
     }
 }

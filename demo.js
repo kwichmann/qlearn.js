@@ -12,7 +12,7 @@ function simulate() {
     while(!episodeEnded) {
         action = Math.random() < 0.5 ? 0 : 1;
 
-        if (state == 0) {
+        if (state == -1) {
             reward = -1;
             action = null;
             episodeEnded = true;
@@ -41,8 +41,6 @@ for (let i = 0; i < 100; i++) {
     buffer.addEpisode(episode, 1);
 }
 
-const q = tf.variable(tf.zeros([5, 2]));
-
 const inputState = tf.input({shape: [1]});
 const inputAction = tf.input({shape: [1]});
 
@@ -50,13 +48,13 @@ const concatLayer = tf.layers.concatenate();
 const input = concatLayer.apply([inputState, inputAction]);
 
 const hidden = tf.layers.dense({units: 10, activation: "relu"}).apply(input);
-const output = tf.layers.dense({units: 1, activation: "linear"}).apply(hidden);
+const output = tf.layers.dense({units: 1, activation: "tanh"}).apply(hidden);
 
 const approx = tf.model({inputs: [inputState, inputAction], outputs: output});
 
 let model = new Qmodel(approx);
  
-const opt = tf.train.sgd(0.1);
+const opt = tf.train.sgd(0.01);
 
 model.setTrainingParameters(
     {
