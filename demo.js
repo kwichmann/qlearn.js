@@ -41,20 +41,20 @@ for (let i = 0; i < 100; i++) {
     buffer.addEpisode(episode, 1);
 }
 
-const inputState = tf.input({shape: [1]});
-const inputAction = tf.input({shape: [1]});
+// const inputState = tf.input({shape: [1]});
+// const inputAction = tf.input({shape: [1]});
 
-const concatLayer = tf.layers.concatenate();
-const input = concatLayer.apply([inputState, inputAction]);
+// const concatLayer = tf.layers.concatenate();
+// const input = concatLayer.apply([inputState, inputAction]);
 
-const hidden = tf.layers.dense({units: 10, activation: "relu"}).apply(input);
-const output = tf.layers.dense({units: 1, activation: "tanh"}).apply(hidden);
+// const hidden = tf.layers.dense({units: 10, activation: "relu"}).apply(input);
+// const output = tf.layers.dense({units: 1, activation: "tanh"}).apply(hidden);
 
-const approx = tf.model({inputs: [inputState, inputAction], outputs: output});
+// const approx = tf.model({inputs: [inputState, inputAction], outputs: output});
 
-let model = new Qmodel(approx);
- 
-const opt = tf.train.sgd(0.01);
+let model = new ExactModel(5, 2);
+
+const opt = tf.train.sgd(0.05);
 
 model.setTrainingParameters(
     {
